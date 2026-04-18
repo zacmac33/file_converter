@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Audio File Converter & Tag Editor</title>
+  <!-- Built with assistance from Claude (Anthropic) -->
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #1a1a1a;
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 2rem 1rem;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 620px;
+    }
+
+    h1 {
+      font-size: 22px;
+      font-weight: 600;
+      margin-bottom: 0.25rem;
+      color: #111;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 1.5rem;
+    }
+
+    .drop-zone {
+      border: 1.5px dashed #ccc;
+      border-radius: 12px;
+      padding: 2.5rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      background: #fafafa;
+    }
+
+    .drop-zone:hover, .drop-zone.over {
+      background: #eef5fd;
+      border-color: #378ADD;
+    }
+
+    .drop-icon { font-size: 32px; margin-bottom: 0.5rem; }
+
+    .drop-label { font-size: 15px; color: #555; }
+    .drop-label span { color: #378ADD; font-weight: 500; cursor: pointer; }
+
+    #file-input { display: none; }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e0e0e0;
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-top: 1rem;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+    }
+
+    .file-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 1rem;
+    }
+
+    .file-icon {
+      width: 44px; height: 44px;
+      border-radius: 8px;
+      background: #eef5fd;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 600; font-size: 11px; text-transform: uppercase;
+      color: #378ADD; flex-shrink: 0; letter-spacing: 0.03em;
+    }
+
+    .file-name { font-size: 15px; font-weight: 500; color: #111; word-break: break-all; }
+    .file-meta { font-size: 12px; color: #888; margin-top: 2px; }
+
+    .section-label {
+      font-size: 11px; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.07em; color: #999;
+      margin: 1rem 0 0.5rem;
+      display: flex; align-items: center; gap: 8px;
+    }
+
+    .badge {
+      font-size: 11px; padding: 2px 8px;
+      border-radius: 20px;
+      background: #eef5fd; color: #378ADD; font-weight: 600;
+    }
+
+    .divider { border: none; border-top: 1px solid #f0f0f0; margin: 1rem 0; }
+
+    .row {
+      display: flex; align-items: center;
+      gap: 12px; margin-bottom: 0.75rem;
+    }
+
+    .row label {
+      font-size: 13px; color: #666;
+      min-width: 100px; flex-shrink: 0;
+    }
+
+    .row input {
+      flex: 1; height: 36px; padding: 0 10px; font-size: 14px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      background: #fff;
+      color: #111;
+      transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
+      outline: none;
+    }
+
+    .row input:focus {
+      border-color: #378ADD;
+      box-shadow: 0 0 0 3px rgba(55,138,221,0.12);
+    }
+
+    .tag-prefilled {
+      border-color: #378ADD !important;
+      background: #eef5fd !important;
+    }
+
+    .audio-section { animation: fadeIn 0.2s ease; }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .btn-row { display: flex; gap: 10px; margin-top: 1.25rem; }
+
+    .btn-dl {
+      flex: 1; height: 40px;
+      border-radius: 8px;
+      background: #378ADD; color: #fff;
+      border: none; cursor: pointer;
+      font-size: 14px; font-weight: 500;
+      transition: opacity 0.15s, transform 0.1s;
+    }
+
+    .btn-dl:hover { opacity: 0.88; }
+    .btn-dl:active { transform: scale(0.98); }
+
+    .btn-reset {
+      height: 40px; padding: 0 16px;
+      border-radius: 8px;
+      background: transparent;
+      border: 1px solid #ddd;
+      color: #666; cursor: pointer;
+      font-size: 13px;
+      transition: background 0.15s;
+    }
+
+    .btn-reset:hover { background: #f5f5f5; }
+
+    .note {
+      font-size: 12px; color: #999;
+      margin-top: 0.5rem; line-height: 1.6;
+    }
+
+    #status-msg {
+      font-size: 13px; color: #2e7d32;
+      margin-top: 0.5rem; display: none;
+      font-weight: 500;
+    }
+
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #bbb;
+      margin-top: 2rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <h1>File Converter &amp; Tag Editor</h1>
+  <p class="subtitle">Convert any file's extension. For audio files, read and edit embedded metadata tags.</p>
+
+  <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+    <div class="drop-icon">📄</div>
+    <div class="drop-label">Drop any file here, or <span>browse</span></div>
+    <input type="file" id="file-input">
+  </div>
+
+  <div class="card" id="file-card" style="display:none">
+    <div class="file-header">
+      <div class="file-icon" id="file-ext-badge">?</div>
+      <div>
+        <div class="file-name" id="file-name-display"></div>
+        <div class="file-meta" id="file-meta-display"></div>
+      </div>
+    </div>
+
+    <div class="section-label">Convert to</div>
+    <div class="row">
+      <label>New extension</label>
+      <input type="text" id="new-ext" placeholder="e.g. txt, mp3, png…" style="max-width:200px;">
+      <span style="font-size:13px;color:#aaa;">leave blank to keep original</span>
+    </div>
+
+    <div id="audio-block" style="display:none">
+      <hr class="divider">
+      <div class="section-label">
+        Audio metadata
+        <span class="badge" id="format-badge">tags</span>
+      </div>
+      <div class="audio-section">
+        <div class="row"><label>Title</label><input type="text" id="tag-title" placeholder="Song title"></div>
+        <div class="row"><label>Artist</label><input type="text" id="tag-artist" placeholder="Artist name"></div>
+        <div class="row"><label>Album</label><input type="text" id="tag-album" placeholder="Album name"></div>
+        <div class="row"><label>Year</label><input type="text" id="tag-year" placeholder="2024" style="max-width:100px;"></div>
+        <div class="row"><label>Genre</label><input type="text" id="tag-genre" placeholder="Genre"></div>
+        <div class="row"><label>Track #</label><input type="text" id="tag-track" placeholder="1" style="max-width:100px;"></div>
+        <div class="row"><label>Comment</label><input type="text" id="tag-comment" placeholder="Optional comment"></div>
+        <p class="note" id="tag-note"></p>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-dl" onclick="doDownload()">↓ Download converted file</button>
+      <button class="btn-reset" onclick="resetTool()">Clear</button>
+    </div>
+    <div id="status-msg">✓ File ready — download started!</div>
+  </div>
+
+  <footer>Built with assistance from Claude (Anthropic) &mdash; runs entirely in your browser, no data is uploaded.</footer>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/id3-writer/4.5.0/browser-id3-writer.min.js"></script>
+<script>
+const AUDIO_EXTS = ['mp3','wav','ogg','flac','aac','m4a','wma','opus','aiff','aif'];
+let currentFile = null;
+let currentBuffer = null;
+let currentExt = '';
+
+const dropZone = document.getElementById('drop-zone');
+const fileInput = document.getElementById('file-input');
+
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('over'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('over'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('over');
+  if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+});
+fileInput.addEventListener('change', e => { if (e.target.files[0]) loadFile(e.target.files[0]); });
+
+function loadFile(f) {
+  currentFile = f;
+  currentExt = f.name.split('.').pop().toLowerCase();
+  document.getElementById('file-name-display').textContent = f.name;
+  document.getElementById('file-meta-display').textContent = formatSize(f.size) + ' · ' + (f.type || 'unknown type');
+  document.getElementById('file-ext-badge').textContent = currentExt.slice(0,4).toUpperCase();
+  document.getElementById('new-ext').value = currentExt;
+  document.getElementById('status-msg').style.display = 'none';
+  clearTagFields();
+
+  const isAudio = AUDIO_EXTS.includes(currentExt);
+  document.getElementById('audio-block').style.display = isAudio ? 'block' : 'none';
+  document.getElementById('file-card').style.display = 'block';
+
+  if (isAudio) {
+    const labels = { mp3:'ID3', ogg:'Vorbis', flac:'FLAC', wav:'WAV INFO', aiff:'ID3', aif:'ID3', m4a:'MP4', aac:'AAC', opus:'Vorbis', wma:'WMA' };
+    document.getElementById('format-badge').textContent = labels[currentExt] || 'tags';
+    const reader = new FileReader();
+    reader.onload = ev => { currentBuffer = ev.target.result; readTags(currentBuffer, currentExt); };
+    reader.readAsArrayBuffer(f);
+  } else { currentBuffer = null; }
+}
+
+function readTags(buf, ext) {
+  try {
+    if (ext === 'mp3' || ext === 'aiff' || ext === 'aif') readID3(buf);
+    else if (ext === 'ogg' || ext === 'opus') readVorbis(buf);
+    else if (ext === 'flac') readFlac(buf);
+    else if (ext === 'wav') readWav(buf);
+    else setNote('Tag reading not supported for this format — fill in manually.');
+  } catch(e) { setNote('Could not read existing tags — fill in manually.'); }
+}
+
+function readID3(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0]!==0x49||b[1]!==0x44||b[2]!==0x33) { setNote('No ID3 tags found.'); return; }
+  const id3Size = ((b[6]&0x7f)<<21)|((b[7]&0x7f)<<14)|((b[8]&0x7f)<<7)|(b[9]&0x7f);
+  let off = 10, end = off + id3Size, found = 0;
+  const map = { TIT2:'tag-title', TPE1:'tag-artist', TALB:'tag-album', TYER:'tag-year', TDRC:'tag-year', TCON:'tag-genre', TRCK:'tag-track' };
+  while (off + 10 < end) {
+    const fid = String.fromCharCode(b[off],b[off+1],b[off+2],b[off+3]);
+    const fsz = (b[off+4]<<24)|(b[off+5]<<16)|(b[off+6]<<8)|b[off+7];
+    if (fsz <= 0 || fsz > 100000) break;
+    const enc = b[off+10];
+    let text = '';
+    if (enc===0||enc===3) text = new TextDecoder('utf-8').decode(b.slice(off+11,off+10+fsz)).replace(/\0/g,'').trim();
+    else text = new TextDecoder('utf-16').decode(b.slice(off+11,off+10+fsz)).replace(/\0/g,'').trim();
+    if (map[fid] && text) { setField(map[fid], text.replace(/^\(\d+\)/,'')); found++; }
+    if (fid==='COMM' && fsz>4) {
+      const ct = new TextDecoder('utf-8').decode(b.slice(off+14,off+10+fsz)).replace(/\0/g,'').trim();
+      if (ct) { setField('tag-comment', ct); found++; }
+    }
+    off += 10 + fsz;
+  }
+  setNote(found ? 'ℹ️ Existing ID3 tags pre-filled (blue). Edit freely before downloading.' : 'No ID3 tags found in this file.');
+}
+
+function readVorbis(buf) {
+  const b = new Uint8Array(buf);
+  let off = -1;
+  for (let i = 0; i < Math.min(b.length - 8, 65536); i++) {
+    if ((b[i]===0x03&&b[i+1]===0x76&&b[i+2]===0x6F&&b[i+3]===0x72) ||
+        (b[i]===0x4F&&b[i+1]===0x70&&b[i+2]===0x75&&b[i+3]===0x73&&b[i+4]===0x54)) {
+      off = i + (b[i]===0x4F ? 8 : 7); break;
+    }
+  }
+  if (off < 0) { setNote('No Vorbis comment header found.'); return; }
+  const vendorLen = readLE32(b, off); off += 4 + vendorLen;
+  const count = readLE32(b, off); off += 4;
+  const map = { title:'tag-title', artist:'tag-artist', albumartist:'tag-artist', album:'tag-album', date:'tag-year', genre:'tag-genre', tracknumber:'tag-track', comment:'tag-comment', description:'tag-comment' };
+  let found = 0;
+  for (let i = 0; i < count && off < b.length; i++) {
+    const len = readLE32(b, off); off += 4;
+    const raw = new TextDecoder('utf-8').decode(b.slice(off, off+len)); off += len;
+    const eq = raw.indexOf('=');
+    if (eq < 0) continue;
+    const key = raw.slice(0,eq).toLowerCase(), val = raw.slice(eq+1).trim();
+    if (map[key] && val) { setField(map[key], val); found++; }
+  }
+  setNote(found ? 'ℹ️ Existing Vorbis tags pre-filled (blue). Edit freely before downloading.' : 'No Vorbis tags found in this file.');
+}
+
+function readFlac(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0]!==0x66||b[1]!==0x4C||b[2]!==0x61||b[3]!==0x43) { setNote('Not a valid FLAC file.'); return; }
+  let off = 4, found = 0;
+  while (off + 4 < b.length) {
+    const blockType = b[off] & 0x7f;
+    const isLast = (b[off] & 0x80) !== 0;
+    const blockSize = (b[off+1]<<16)|(b[off+2]<<8)|b[off+3]; off += 4;
+    if (blockType === 4) {
+      const vendorLen = readLE32(b, off); off += 4 + vendorLen;
+      const count = readLE32(b, off); off += 4;
+      const map = { title:'tag-title', artist:'tag-artist', album:'tag-album', date:'tag-year', genre:'tag-genre', tracknumber:'tag-track', comment:'tag-comment' };
+      for (let i = 0; i < count; i++) {
+        const len = readLE32(b, off); off += 4;
+        const raw = new TextDecoder('utf-8').decode(b.slice(off, off+len)); off += len;
+        const eq = raw.indexOf('=');
+        if (eq < 0) continue;
+        const key = raw.slice(0,eq).toLowerCase(), val = raw.slice(eq+1).trim();
+        if (map[key] && val) { setField(map[key], val); found++; }
+      }
+      break;
+    } else { off += blockSize; }
+    if (isLast) break;
+  }
+  setNote(found ? 'ℹ️ Existing FLAC tags pre-filled (blue). Edit freely before downloading.' : 'No FLAC tags found in this file.');
+}
+
+function readWav(buf) {
+  const b = new Uint8Array(buf);
+  if (b[0]!==0x52||b[1]!==0x49||b[2]!==0x46||b[3]!==0x46) { setNote('Not a valid WAV file.'); return; }
+  let off = 12, found = 0;
+  const map = { INAM:'tag-title', IART:'tag-artist', IPRD:'tag-album', ICRD:'tag-year', IGNR:'tag-genre', ITRK:'tag-track', ICMT:'tag-comment' };
+  while (off + 8 < b.length) {
+    const chunkId = String.fromCharCode(b[off],b[off+1],b[off+2],b[off+3]);
+    const chunkSize = readLE32(b, off+4); off += 8;
+    if (chunkId === 'LIST') {
+      const listType = String.fromCharCode(b[off],b[off+1],b[off+2],b[off+3]);
+      if (listType === 'INFO') {
+        let ioff = off + 4, iend = off + chunkSize;
+        while (ioff + 8 < iend) {
+          const tag = String.fromCharCode(b[ioff],b[ioff+1],b[ioff+2],b[ioff+3]);
+          const tsize = readLE32(b, ioff+4); ioff += 8;
+          const val = new TextDecoder('utf-8').decode(b.slice(ioff, ioff+tsize)).replace(/\0/g,'').trim();
+          if (map[tag] && val) { setField(map[tag], val); found++; }
+          ioff += tsize + (tsize%2);
+        }
+      }
+      off += chunkSize;
+    } else { off += chunkSize + (chunkSize%2); }
+  }
+  setNote(found ? 'ℹ️ Existing WAV INFO tags pre-filled (blue). Edit freely before downloading.' : 'No WAV INFO tags found in this file.');
+}
+
+function doDownload() {
+  if (!currentFile) return;
+  const rawExt = document.getElementById('new-ext').value.trim().replace(/^\./, '');
+  const targetExt = rawExt || currentExt;
+  const baseName = currentFile.name.replace(/\.[^.]+$/, '');
+  const newName = baseName + '.' + targetExt;
+  const isAudioBlock = document.getElementById('audio-block').style.display !== 'none';
+
+  if (isAudioBlock && currentBuffer) {
+    if (currentExt==='mp3'||currentExt==='aiff'||currentExt==='aif') writeMp3(currentBuffer, newName);
+    else if (currentExt==='ogg'||currentExt==='opus') writeVorbisOgg(currentBuffer, newName);
+    else if (currentExt==='flac') writeFlac(currentBuffer, newName);
+    else if (currentExt==='wav') writeWav(currentBuffer, newName);
+    else simpleDownload(currentFile, newName);
+  } else { simpleDownload(currentFile, newName); }
+
+  const msg = document.getElementById('status-msg');
+  msg.style.display = 'block';
+  setTimeout(() => msg.style.display = 'none', 3000);
+}
+
+function writeMp3(buf, name) {
+  try {
+    const w = new ID3Writer(buf);
+    const t = getTags();
+    if (t.title) w.setFrame('TIT2', t.title);
+    if (t.artist) w.setFrame('TPE1', [t.artist]);
+    if (t.album) w.setFrame('TALB', t.album);
+    if (t.year) w.setFrame('TYER', parseInt(t.year)||0);
+    if (t.genre) w.setFrame('TCON', [t.genre]);
+    if (t.track) w.setFrame('TRCK', t.track);
+    if (t.comment) w.setFrame('COMM', { description:'', text:t.comment, language:'eng' });
+    w.addTag();
+    blobDownload(w.getURL(), name, true);
+  } catch(e) { simpleDownload(new Blob([buf]), name); }
+}
+
+function writeVorbisOgg(buf, name) {
+  try {
+    const b = new Uint8Array(buf);
+    const comments = buildVorbisComments(getTags());
+    const out = rewriteOggVorbisComment(b, comments, currentExt === 'opus');
+    blobDownload(URL.createObjectURL(new Blob([out], {type:'audio/ogg'})), name, true);
+  } catch(e) { simpleDownload(new Blob([buf]), name); }
+}
+
+function buildVorbisComments(t) {
+  const pairs = [];
+  if (t.title) pairs.push('TITLE=' + t.title);
+  if (t.artist) pairs.push('ARTIST=' + t.artist);
+  if (t.album) pairs.push('ALBUM=' + t.album);
+  if (t.year) pairs.push('DATE=' + t.year);
+  if (t.genre) pairs.push('GENRE=' + t.genre);
+  if (t.track) pairs.push('TRACKNUMBER=' + t.track);
+  if (t.comment) pairs.push('COMMENT=' + t.comment);
+  return pairs;
+}
+
+function rewriteOggVorbisComment(b, comments, isOpus) {
+  const enc = new TextEncoder();
+  const vendor = 'Claude File Converter';
+  const vendorBytes = enc.encode(vendor);
+  let newPacket = [];
+  if (isOpus) { [0x4F,0x70,0x75,0x73,0x54,0x61,0x67,0x73].forEach(x=>newPacket.push(x)); }
+  else { [0x03,0x76,0x6F,0x72,0x62,0x69,0x73].forEach(x=>newPacket.push(x)); }
+  writeLE32Arr(newPacket, vendorBytes.length);
+  vendorBytes.forEach(x=>newPacket.push(x));
+  writeLE32Arr(newPacket, comments.length);
+  for (const c of comments) { const cb = enc.encode(c); writeLE32Arr(newPacket, cb.length); cb.forEach(x=>newPacket.push(x)); }
+  if (!isOpus) newPacket.push(0x01);
+  let off = 0, out = [], replaced = false;
+  while (off < b.length) {
+    if (b[off]!==0x4F||b[off+1]!==0x67||b[off+2]!==0x67||b[off+3]!==0x53) break;
+    const pageSegs = b[off+26];
+    let dataLen = 0;
+    for (let s = 0; s < pageSegs; s++) dataLen += b[off+27+s];
+    const pageEnd = off + 27 + pageSegs + dataLen;
+    const pageData = b.slice(off+27+pageSegs, pageEnd);
+    const headerType = b[off+5];
+    const isComment = !replaced && (
+      (pageData[0]===0x03&&pageData[1]===0x76) ||
+      (isOpus&&pageData[0]===0x4F&&pageData[1]===0x70&&pageData[2]===0x75&&pageData[3]===0x73&&pageData[4]===0x54)
+    );
+    if (isComment) {
+      const serial = b.slice(off+14, off+18);
+      const seqNum = b.slice(off+18, off+22);
+      buildOggPage(headerType, serial, seqNum, new Uint8Array(newPacket)).forEach(x => out.push(x));
+      replaced = true;
+    } else { for (let i = off; i < pageEnd; i++) out.push(b[i]); }
+    off = pageEnd;
+  }
+  return new Uint8Array(out);
+}
+
+function buildOggPage(headerType, serial, seqNum, data) {
+  const segs = []; let rem = data.length;
+  while (rem >= 255) { segs.push(255); rem -= 255; } segs.push(rem);
+  const hdrLen = 27 + segs.length;
+  const page = new Uint8Array(hdrLen + data.length);
+  page[0]=0x4F;page[1]=0x67;page[2]=0x67;page[3]=0x53;page[4]=0x00;page[5]=headerType;
+  for(let i=6;i<14;i++) page[i]=0;
+  page[14]=serial[0];page[15]=serial[1];page[16]=serial[2];page[17]=serial[3];
+  page[18]=seqNum[0];page[19]=seqNum[1];page[20]=seqNum[2];page[21]=seqNum[3];
+  page[22]=page[23]=page[24]=page[25]=0; page[26]=segs.length;
+  segs.forEach((s,i)=>page[27+i]=s);
+  data.forEach((d,i)=>page[hdrLen+i]=d);
+  const crc = oggCRC32(page);
+  page[22]=(crc)&0xff;page[23]=(crc>>8)&0xff;page[24]=(crc>>16)&0xff;page[25]=(crc>>24)&0xff;
+  return page;
+}
+
+function oggCRC32(data) {
+  let crc = 0; const poly = 0x04c11db7;
+  for (let i = 0; i < data.length; i++) {
+    crc ^= (data[i] << 24);
+    for (let j = 0; j < 8; j++) crc = (crc & 0x80000000) ? ((crc << 1) ^ poly) : (crc << 1);
+  }
+  return crc >>> 0;
+}
+
+function writeFlac(buf, name) {
+  try {
+    const b = new Uint8Array(buf);
+    const enc = new TextEncoder();
+    const vendor = enc.encode('Claude File Converter');
+    const comments = buildVorbisComments(getTags());
+    let blockBytes = [];
+    writeLE32Arr(blockBytes, vendor.length);
+    vendor.forEach(x => blockBytes.push(x));
+    writeLE32Arr(blockBytes, comments.length);
+    for (const c of comments) { const cb = enc.encode(c); writeLE32Arr(blockBytes, cb.length); cb.forEach(x=>blockBytes.push(x)); }
+    const blockData = new Uint8Array(blockBytes);
+    let off = 4, out = [0x66,0x4C,0x61,0x43];
+    let insertedComment = false;
+    while (off + 4 < b.length) {
+      const blockType = b[off] & 0x7f;
+      const isLast = (b[off] & 0x80) !== 0;
+      const blockSize = (b[off+1]<<16)|(b[off+2]<<8)|b[off+3];
+      if (blockType === 4) {
+        const flag = isLast ? 0x84 : 0x04;
+        out.push(flag, (blockData.length>>16)&0xff, (blockData.length>>8)&0xff, blockData.length&0xff);
+        blockData.forEach(x => out.push(x));
+        insertedComment = true;
+      } else { for (let i = off; i < off + 4 + blockSize; i++) out.push(b[i]); }
+      off += 4 + blockSize;
+      if (isLast) break;
+    }
+    while (off < b.length) out.push(b[off++]);
+    blobDownload(URL.createObjectURL(new Blob([new Uint8Array(out)],{type:'audio/flac'})), name, true);
+  } catch(e) { simpleDownload(new Blob([buf]), name); }
+}
+
+function writeWav(buf, name) {
+  try {
+    const b = new Uint8Array(buf);
+    const enc = new TextEncoder();
+    const t = getTags();
+    const tagMap = [['INAM',t.title],['IART',t.artist],['IPRD',t.album],['ICRD',t.year],['IGNR',t.genre],['ITRK',t.track],['ICMT',t.comment]];
+    let infoBytes = [0x49,0x4E,0x46,0x4F];
+    for (const [k,v] of tagMap) {
+      if (!v) continue;
+      const vb = enc.encode(v + '\0');
+      const padded = vb.length % 2 ? new Uint8Array([...vb, 0]) : vb;
+      k.split('').forEach(c => infoBytes.push(c.charCodeAt(0)));
+      writeLE32Arr(infoBytes, vb.length);
+      padded.forEach(x => infoBytes.push(x));
+    }
+    const infoData = new Uint8Array(infoBytes);
+    const listChunk = new Uint8Array(8 + infoData.length);
+    listChunk[0]=0x4C;listChunk[1]=0x49;listChunk[2]=0x53;listChunk[3]=0x54;
+    listChunk[4]=infoData.length&0xff;listChunk[5]=(infoData.length>>8)&0xff;
+    listChunk[6]=(infoData.length>>16)&0xff;listChunk[7]=(infoData.length>>24)&0xff;
+    infoData.forEach((x,i)=>listChunk[8+i]=x);
+    let off = 12, out = Array.from(b.slice(0,12));
+    while (off + 8 < b.length) {
+      const cid = String.fromCharCode(b[off],b[off+1],b[off+2],b[off+3]);
+      const csz = readLE32(b, off+4);
+      if (cid === 'LIST') { off += 8 + csz + (csz%2); continue; }
+      for (let i = off; i < Math.min(off+8+csz+(csz%2), b.length); i++) out.push(b[i]);
+      off += 8 + csz + (csz%2);
+    }
+    listChunk.forEach(x => out.push(x));
+    const final = new Uint8Array(out);
+    final[4]=(final.length-8)&0xff;final[5]=((final.length-8)>>8)&0xff;
+    final[6]=((final.length-8)>>16)&0xff;final[7]=((final.length-8)>>24)&0xff;
+    blobDownload(URL.createObjectURL(new Blob([final],{type:'audio/wav'})), name, true);
+  } catch(e) { simpleDownload(new Blob([buf]), name); }
+}
+
+function readLE32(b, off) { return (b[off]|(b[off+1]<<8)|(b[off+2]<<16)|(b[off+3]<<24)) >>> 0; }
+function writeLE32Arr(arr, val) { arr.push(val&0xff,(val>>8)&0xff,(val>>16)&0xff,(val>>24)&0xff); }
+
+function getTags() {
+  return {
+    title:   document.getElementById('tag-title').value.trim(),
+    artist:  document.getElementById('tag-artist').value.trim(),
+    album:   document.getElementById('tag-album').value.trim(),
+    year:    document.getElementById('tag-year').value.trim(),
+    genre:   document.getElementById('tag-genre').value.trim(),
+    track:   document.getElementById('tag-track').value.trim(),
+    comment: document.getElementById('tag-comment').value.trim(),
+  };
+}
+
+function setField(id, val) {
+  const el = document.getElementById(id);
+  if (el && !el.value) { el.value = val; el.classList.add('tag-prefilled'); }
+}
+
+function clearTagFields() {
+  ['tag-title','tag-artist','tag-album','tag-year','tag-genre','tag-track','tag-comment'].forEach(id => {
+    const el = document.getElementById(id);
+    el.value = ''; el.classList.remove('tag-prefilled');
+  });
+  document.getElementById('tag-note').innerHTML = '';
+}
+
+function setNote(html) { document.getElementById('tag-note').innerHTML = html; }
+
+function formatSize(b) {
+  if (b<1024) return b+' B';
+  if (b<1048576) return (b/1024).toFixed(1)+' KB';
+  return (b/1048576).toFixed(2)+' MB';
+}
+
+function simpleDownload(file, name) {
+  const url = URL.createObjectURL(file);
+  triggerDownload(url, name);
+  setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+function blobDownload(url, name, revoke) {
+  triggerDownload(url, name);
+  if (revoke) setTimeout(()=>URL.revokeObjectURL(url), 2000);
+}
+
+function triggerDownload(url, name) {
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+}
+
+function resetTool() {
+  currentFile = null; currentBuffer = null; currentExt = '';
+  fileInput.value = '';
+  document.getElementById('file-card').style.display = 'none';
+  clearTagFields();
+  document.getElementById('new-ext').value = '';
+}
+</script>
+</body>
+</html>
